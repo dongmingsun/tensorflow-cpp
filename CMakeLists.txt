@@ -1,7 +1,9 @@
 cmake_minimum_required(VERSION 3.6)
+
 project(hello_tensorflow)
 
 set(CMAKE_CXX_STANDARD 11)
+set(CMAKE_CXX_FLAGS "-Wno-invalid-partial-specialization")
 
 set(CMAKE_MODULE_PATH ${CMAKE_MODULE_PATH} "${CMAKE_CURRENT_SOURCE_DIR}/cmake/Modules/")
 
@@ -18,5 +20,9 @@ MESSAGE(STATUS "Using protobuf ${Protobuf_VERSION}")
 find_package(TensorFlow REQUIRED)
 include_directories(${TensorFlow_INCLUDE_DIRS})
 
+# OpenCV
+# find_package(OpenCV REQUIRED)
+# include_directories(${OpenCV_INCLUDE_DIRS})
+
 add_executable(hello_tensorflow main.cc)
-target_link_libraries(hello_tensorflow tensorflow_cc tensorflow_framework ${Protobuf_LIBRARIES})
+target_link_libraries(hello_tensorflow tensorflow_cc tensorflow_framework ${Protobuf_LIBRARIES}) # ${OpenCV_LIBS}
