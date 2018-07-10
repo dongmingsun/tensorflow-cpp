@@ -437,7 +437,8 @@ Status SaveMasksAsJPG(const tensorflow::Tensor &input, int mask_number,
   return Status::OK();
 }
 int main(int argc, char *argv[]) {
-  string image = "../data/image1.jpg";
+  // string image = "../data/image1.jpg";
+  string image = "/Users/dongming/Desktop/clock.jpg";
   string graph = "../model/mask_rcnn_inception_v2_coco_2018_01_28/"
                  "frozen_inference_graph.pb";
   // TODO load labels
@@ -515,11 +516,15 @@ int main(int argc, char *argv[]) {
 
   // Run the Mask R-CNN model
   std::vector<Tensor> outputs;
-  Status run_status = session->Run({{input_layer, resized_tensor}},
-                                   {"num_detections:0", "detection_boxes:0",
-                                    "detection_scores:0", "detection_classes:0",
-                                    "detection_masks:0"},
-                                   {}, &outputs); // original:{output_layer}
+  Status run_status = session->Run(
+      {{input_layer, resized_tensor}},
+      {"num_detections:0", "detection_boxes:0", "detection_scores:0",
+       "detection_classes:0", "detection_masks:0",
+       "BatchMultiClassNonMaxSuppression_1/map/TensorArrayStack_1/range",
+       "BatchMultiClassNonMaxSuppression_1/map/TensorArray_6",
+       "BatchMultiClassNonMaxSuppression_1/map/while/Exit_2", "Softmax:0",
+       "Softmax_1:0", "SecondStageBoxPredictor_1/MaskPredictor:0"},
+      {}, &outputs); // original:{output_layer}
   if (!run_status.ok()) {
     LOG(ERROR) << "Running model failed: " << run_status;
     return -1;
@@ -537,11 +542,64 @@ int main(int argc, char *argv[]) {
     return -1;
   }
 
+  // std::cout << "\n==============================\n"
+  //           << "softmax:0"
+  //           << "\n==============================\n"
+  //           << outputs[8].DebugString() << std::endl;
+  // std::cout << "\n==============================\n"
+  //           << "softmax_1:0"
+  //           << "\n==============================\n"
+  //           << outputs[9].DebugString() << std::endl;
   std::cout << "\n==============================\n"
-            << "detection_masks:0"
+            << "SecondStageBoxPredictor_1/MaskPredictor:0"
             << "\n==============================\n"
-            << image_masks[0].DebugString() << std::endl;
-  // auto image_masks_tensor = image_masks[0].tensor<float, 3>();
+            << outputs[10].DebugString() << std::endl;
+
+  std::ofstream myfile;
+
+  auto detection_masks = outputs[4].tensor<float, 4>();
+  myfile.open("detection_masks.csv");
+  for (int row = 0; row < 15; ++row) {
+    for (int col = 0; col < 15; ++col) {
+      myfile << detection_masks(0, 1, row, col) << ",";
+    }
+    myfile << "\n";
+  }
+  myfile.close();
+
+  auto mask_predictor = outputs[10].tensor<float, 5>();
+  myfile.open("mask_raw_scores.csv");
+  for (int row = 0; row < 15; ++row) {
+    for (int col = 0; col < 15; ++col) {
+      myfile << mask_predictor(1, 0, 0, row, col) << ",";
+    }
+    myfile << "\n";
+  }
+  myfile.close();
+
+
+  
+  auto detection_scores = outputs[2].tensor<float, 2>();
+  myfile.open("detection_scores.csv");
+  for (int num_boxes = 0; num_boxes < 100; ++num_boxes) {
+    myfile << detection_scores(0, num_boxes) << ",";
+    myfile << "\n";
+  }
+  myfile.close();
+
+
+  auto softmax_1 = outputs[9].tensor<float, 2>();
+  myfile.open("softmax_1.csv");
+  for (int num_boxes = 0; num_boxes < 100; ++num_boxes) {
+    for (int num_classes = 0; num_classes < 91; ++num_classes) {
+      myfile << softmax_1(num_boxes, num_classes) << ",";
+    }
+    myfile << "\n";
+  }
+  myfile.close();
+
+  // NOTE Save masks as jpg
+  auto image_masks_tensor = image_masks[0].tensor<float, 3>();
   for (int i = 0; i < num_detections; ++i) {
     std::cout << "Saving mask_" << i + 1 << ".jpg"
               << "\n";
